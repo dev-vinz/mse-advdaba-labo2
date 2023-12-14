@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: neo4j-pod
+  namespace: adv-da-ba23-jeamar
+spec:
+  initContainers:
+  - name: init-neo4j
+    image: busybox
+    command: ['sh', '-c', 'cp /scripts/run.sh /var/lib/neo4j/import/run.sh']
+    volumeMounts:
+    - name: import-volume
+      mountPath: /var/lib/neo4j/import
+    - name: config-volume
+      mountPath: /scripts
+  containers:
+  - name: neo4j
+    image: neo4j:5.14.0
+    env:
+    - name: NEO4J_AUTH
+      value: "neo4j/pass1234"
+    - name: NEO4J_apoc_export_file_enabled
+      value: "true"
+    - name: NEO4J_apoc_import_file_enabled
+      value: "true"
+    - name: NEO4J_apoc_import_file_use__neo4j__config
+      value: "true"
+    - name: dbms.security.procedures.unrestricted
+      value: "apoc.*"
+    - name: NEO4J_PLUGINS
+      value: '["apoc"]'
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /neo4j/logs
+    - name: conf-volume
+      mountPath: /var/lib/neo4j/conf
+    - name: import-volume
+      mountPath: /var/lib/neo4j/import
+    - name: plugins-volume
+      mountPath: /var/lib/neo4j/plugins
+    lifecycle:
+      postStart:
+        exec:
+          command: ["sh", "/var/lib/neo4j/import/run.sh", "neo4j","pass1234"]
+    resources:
+      limits:
+        memory: "3Gi"
+        cpu: "3"
+  volumes:
+  - name: config-volume
+    configMap:
+      name: neo4j-script-configmap
+  - name: logs-volume
+    emptyDir: {}
+  - name: conf-volume
+    emptyDir: {}
+  - name: import-volume
+    emptyDir: {}
+  - name: plugins-volume
+    emptyDir: {}
